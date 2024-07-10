@@ -21,21 +21,13 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/containerd/cgroups"
+	"github.com/containerd/cgroups/v3/cgroup1"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 )
 
 func NewCgroupV1Collector(paths []string, logger log.Logger) Collector {
 	return NewExporter(paths, logger, false)
-}
-
-func subsystem() ([]cgroups.Subsystem, error) {
-	s := []cgroups.Subsystem{
-		cgroups.NewCpuacct(*CgroupRoot),
-		cgroups.NewMemory(*CgroupRoot),
-	}
-	return s, nil
 }
 
 func getInfov1(name string, metric *CgroupMetric, logger log.Logger) {
@@ -75,60 +67,47 @@ func getInfov1(name string, metric *CgroupMetric, logger log.Logger) {
 	}
 }
 
-func getNamev1(p cgroups.Process, path string, logger log.Logger) (string, error) {
-	cpuacctPath := filepath.Join(*CgroupRoot, "cpuacct")
-	name := strings.TrimPrefix(p.Path, cpuacctPath)
-	name = strings.TrimSuffix(name, "/")
-	dirs := strings.Split(name, "/")
-	level.Debug(logger).Log("msg", "cgroup name", "dirs", fmt.Sprintf("%v", dirs))
-	// Handle user.slice, system.slice and torque
-	if len(dirs) == 3 {
-		return name, nil
+func getNamev1(p cgroup1.Process, logger log.Logger) (string, error) {
+	re := regexp.MustCompile(`^/sys/fs/cgroup/[^/]+(/.*)`)
+	matches := re.FindStringSubmatch(p.Path)
+	if len(matches) != 2 {
+		level.Error(logger).Log("msg", "Failed to get cgroup name", "path", p.Path)
+		return "", fmt.Errorf("Failed to get cgroup name for path %v", p.Path)
 	}
-	// Handle deeper cgroup where we want higher level, mainly SLURM
-	var keepDirs []string
-	for i, d := range dirs {
-		if strings.HasPrefix(d, "job_") {
-			keepDirs = dirs[0 : i+1]
-			break
-		}
-	}
-	if keepDirs == nil {
-		return name, nil
-	}
-	name = strings.Join(keepDirs, "/")
+	name := strings.TrimSuffix(matches[1], "/")
 	return name, nil
 }
 
 func (e *Exporter) getMetricsv1(name string, pids map[string][]int) (CgroupMetric, error) {
+
 	metric := CgroupMetric{name: name}
 	level.Debug(e.logger).Log("msg", "Loading cgroup", "root", *CgroupRoot, "path", name)
-	ctrl, err := cgroups.Load(subsystem, func(subsystem cgroups.Name) (string, error) {
-		return name, nil
-	})
+	ctrl, err := cgroup1.Load(cgroup1.StaticPath(name))
 	if err != nil {
 		level.Error(e.logger).Log("msg", "Failed to load cgroups", "path", name, "err", err)
 		metric.err = true
 		return metric, err
 	}
-	stats, err := ctrl.Stat(cgroups.IgnoreNotExist)
+
+	stats, err := ctrl.Stat(cgroup1.IgnoreNotExist)
 	if err != nil {
 		level.Error(e.logger).Log("msg", "Failed to stat cgroups", "path", name, "err", err)
 		metric.err = true
 		return metric, err
 	}
+
 	if stats == nil {
 		level.Error(e.logger).Log("msg", "Cgroup stats are nil", "path", name)
 		metric.err = true
 		return metric, err
 	}
-	if stats.CPU != nil {
-		if stats.CPU.Usage != nil {
-			metric.cpuUser = float64(stats.CPU.Usage.User) / 1000000000.0
-			metric.cpuSystem = float64(stats.CPU.Usage.Kernel) / 1000000000.0
-			metric.cpuTotal = float64(stats.CPU.Usage.Total) / 1000000000.0
-		}
+
+	if stats.CPU != nil && stats.CPU.Usage != nil {
+		metric.cpuUser = float64(stats.CPU.Usage.User) / 1000000000.0
+		metric.cpuSystem = float64(stats.CPU.Usage.Kernel) / 1000000000.0
+		metric.cpuTotal = float64(stats.CPU.Usage.Total) / 1000000000.0
 	}
+
 	if stats.Memory != nil {
 		metric.memoryRSS = float64(stats.Memory.TotalRSS)
 		metric.memoryCache = float64(stats.Memory.TotalCache)
@@ -143,11 +122,13 @@ func (e *Exporter) getMetricsv1(name string, pids map[string][]int) (CgroupMetri
 			metric.memswFailCount = float64(stats.Memory.Swap.Failcnt)
 		}
 	}
+
 	cpusPath := fmt.Sprintf("%s/cpuset%s/cpuset.cpus", *CgroupRoot, name)
 	if cpus, err := getCPUs(cpusPath, e.logger); err == nil {
 		metric.cpus = len(cpus)
 		metric.cpu_list = strings.Join(cpus, ",")
 	}
+
 	getInfov1(name, &metric, e.logger)
 	if *collectProc {
 		if val, ok := pids[name]; ok {
@@ -162,35 +143,39 @@ func (e *Exporter) getMetricsv1(name string, pids map[string][]int) (CgroupMetri
 }
 
 func (e *Exporter) collectv1() ([]CgroupMetric, error) {
-	var names []string
+	var groups []string
 	var metrics []CgroupMetric
 	for _, path := range e.paths {
-		level.Debug(e.logger).Log("msg", "Loading cgroup", "root", *CgroupRoot, "path", path)
-		control, err := cgroups.Load(subsystem, cgroups.StaticPath(path))
+
+		level.Debug(e.logger).Log("msg", "Loading cgroup", "name", path)
+		control, err := cgroup1.Load(cgroup1.StaticPath(path))
 		if err != nil {
-			level.Error(e.logger).Log("msg", "Error loading cgroup subsystem", "root", *CgroupRoot, "path", path, "err", err)
+			level.Error(e.logger).Log("msg", "Error loading cgroup", "path", path, "err", err)
 			metric := CgroupMetric{name: path, err: true}
 			metrics = append(metrics, metric)
 			continue
 		}
-		processes, err := control.Processes(cgroups.Cpuacct, true)
+
+		level.Debug(e.logger).Log("msg", "Loading cgroup processes", "name", path)
+		processes, err := control.Processes(cgroup1.Cpuacct, true)
 		if err != nil {
 			level.Error(e.logger).Log("msg", "Error loading cgroup processes", "path", path, "err", err)
 			metric := CgroupMetric{name: path, err: true}
 			metrics = append(metrics, metric)
 			continue
 		}
+
 		level.Debug(e.logger).Log("msg", "Found processes", "processes", len(processes))
 		pids := make(map[string][]int)
 		for _, p := range processes {
 			level.Debug(e.logger).Log("msg", "Get Name", "process", p.Path, "pid", p.Pid, "path", path)
-			name, err := getNamev1(p, path, e.logger)
+			name, err := getNamev1(p, e.logger)
 			if err != nil {
 				level.Error(e.logger).Log("msg", "Error getting cgroup name for process", "process", p.Path, "path", path, "err", err)
 				continue
 			}
-			if !sliceContains(names, name) {
-				names = append(names, name)
+			if !sliceContains(groups, name) {
+				groups = append(groups, name)
 			}
 			if val, ok := pids[name]; ok {
 				if !sliceContains(val, p.Pid) {
@@ -202,8 +187,8 @@ func (e *Exporter) collectv1() ([]CgroupMetric, error) {
 			}
 		}
 		wg := &sync.WaitGroup{}
-		wg.Add(len(names))
-		for _, name := range names {
+		wg.Add(len(groups))
+		for _, name := range groups {
 			go func(n string, p map[string][]int) {
 				defer wg.Done()
 				metric, _ := e.getMetricsv1(n, p)
