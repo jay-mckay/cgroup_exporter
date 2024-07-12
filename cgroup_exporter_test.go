@@ -27,7 +27,6 @@ import (
 	kingpin "github.com/alecthomas/kingpin/v2"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/treydock/cgroup_exporter/collector"
 )
 
 const (
@@ -39,12 +38,6 @@ func TestMain(m *testing.M) {
 	dir := filepath.Dir(filename)
 	fixture := filepath.Join(dir, "fixtures")
 	procFixture := filepath.Join(fixture, "proc")
-	collector.PidGroupPath = func(pid int) (string, error) {
-		if pid == 67998 {
-			return "/user.slice/user-20821.slice/session-157.scope", nil
-		}
-		return "", fmt.Errorf("Could not find cgroup path for %d", pid)
-	}
 	args := []string{
 		"--config.paths=/user.slice",
 		fmt.Sprintf("--path.cgroup.root=%s", fixture),

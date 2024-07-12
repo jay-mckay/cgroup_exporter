@@ -14,7 +14,6 @@
 package collector
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -23,33 +22,31 @@ import (
 )
 
 func TestGetStatv2(t *testing.T) {
-	w := log.NewSyncWriter(os.Stderr)
-	logger := log.NewLogfmtLogger(w)
-	_, err := getStatv2("swapcached", "/dne", logger)
+	_, err := getStatv2("swapcached", "/dne")
 	if err == nil {
 		t.Errorf("Expected error with /dne but none given")
 	}
 	path := filepath.Join(*CgroupRoot, "system.slice")
-	_, err = getStatv2("swapcached", path, logger)
+	_, err = getStatv2("swapcached", path)
 	if err == nil {
 		t.Errorf("Expected error with /dne but none given")
 	}
 	path = filepath.Join(*CgroupRoot, "user.slice/user-20821.slice/memory.max")
-	_, err = getStatv2("swapcached", path, logger)
+	_, err = getStatv2("swapcached", path)
 	if err == nil {
 		t.Errorf("Expected error with single value file but none given")
 	}
 	path = filepath.Join(*CgroupRoot, "stat.invalid")
-	_, err = getStatv2("nan", path, logger)
+	_, err = getStatv2("nan", path)
 	if err == nil {
 		t.Errorf("Expected error with stat.invalid but none given")
 	}
 	path = filepath.Join(*CgroupRoot, "user.slice/user-20821.slice/memory.stat")
-	_, err = getStatv2("dne", path, logger)
+	_, err = getStatv2("dne", path)
 	if err == nil {
 		t.Errorf("Expected error when stat key missing but none given")
 	}
-	stat, err := getStatv2("swapcached", path, logger)
+	stat, err := getStatv2("swapcached", path)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -62,7 +59,7 @@ func TestCollectv2Error(t *testing.T) {
 	w := log.NewSyncWriter(os.Stderr)
 	logger := log.NewLogfmtLogger(w)
 	exporter := NewExporter([]string{"/dne"}, logger, true)
-	metrics, err := exporter.collectv2()
+	metrics, err := exporter.getAllMetrics()
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err.Error())
 		return
@@ -79,16 +76,10 @@ func TestCollectv2Error(t *testing.T) {
 func TestCollectv2UserSlice(t *testing.T) {
 	varFalse := false
 	collectProc = &varFalse
-	PidGroupPath = func(pid int) (string, error) {
-		if pid == 67998 {
-			return "/user.slice/user-20821.slice/session-157.scope", nil
-		}
-		return "", fmt.Errorf("Could not find cgroup path for %d", pid)
-	}
 	w := log.NewSyncWriter(os.Stderr)
 	logger := log.NewLogfmtLogger(w)
 	exporter := NewExporter([]string{"/user.slice"}, logger, true)
-	metrics, err := exporter.collectv2()
+	metrics, err := exporter.getAllMetrics()
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err.Error())
 		return
@@ -140,19 +131,10 @@ func TestCollectv2SLURM(t *testing.T) {
 	collectProc = &varTrue
 	varLen := 100
 	collectProcMaxExec = &varLen
-	PidGroupPath = func(pid int) (string, error) {
-		if pid == 49276 {
-			return "/system.slice/slurmstepd.scope/job_4/step_0/user/task_0", nil
-		}
-		if pid == 43310 {
-			return "/system.slice/slurmstepd.scope/system", nil
-		}
-		return "", fmt.Errorf("Could not find cgroup path for %d", pid)
-	}
 	w := log.NewSyncWriter(os.Stderr)
 	logger := log.NewLogfmtLogger(w)
 	exporter := NewExporter([]string{"/slurm"}, logger, true)
-	metrics, err := exporter.collectv2()
+	metrics, err := exporter.getAllMetrics()
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err.Error())
 		return

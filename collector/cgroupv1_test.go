@@ -26,7 +26,7 @@ func TestCollectUserSlice(t *testing.T) {
 	w := log.NewSyncWriter(os.Stderr)
 	logger := log.NewLogfmtLogger(w)
 	exporter := NewExporter([]string{"/user.slice"}, logger, false)
-	metrics, err := exporter.collectv1()
+	metrics, err := exporter.getAllMetrics()
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err.Error())
 		return
@@ -84,7 +84,7 @@ func TestCollectSLURM(t *testing.T) {
 	w := log.NewSyncWriter(os.Stderr)
 	logger := log.NewLogfmtLogger(w)
 	exporter := NewExporter([]string{"/slurm"}, logger, false)
-	metrics, err := exporter.collectv1()
+	metrics, err := exporter.getAllMetrics()
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err.Error())
 		return
@@ -160,7 +160,7 @@ func TestCollectTorque(t *testing.T) {
 	w := log.NewSyncWriter(os.Stderr)
 	logger := log.NewLogfmtLogger(w)
 	exporter := NewExporter([]string{"/torque"}, logger, false)
-	metrics, err := exporter.collectv1()
+	metrics, err := exporter.getAllMetrics()
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err.Error())
 		return
