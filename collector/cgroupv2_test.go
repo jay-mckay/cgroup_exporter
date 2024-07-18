@@ -14,7 +14,6 @@
 package collector
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -60,7 +59,7 @@ func TestCollectv2Error(t *testing.T) {
 	w := log.NewSyncWriter(os.Stderr)
 	logger := log.NewLogfmtLogger(w)
 	exporter := NewExporter([]string{"/dne"}, logger, true)
-	metrics, err := exporter.collectv2()
+	metrics, err := exporter.getAllMetrics()
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err.Error())
 		return
@@ -77,16 +76,10 @@ func TestCollectv2Error(t *testing.T) {
 func TestCollectv2UserSlice(t *testing.T) {
 	varFalse := false
 	collectProc = &varFalse
-	PidGroupPath = func(pid int) (string, error) {
-		if pid == 67998 {
-			return "/user.slice/user-20821.slice/session-157.scope", nil
-		}
-		return "", fmt.Errorf("Could not find cgroup path for %d", pid)
-	}
 	w := log.NewSyncWriter(os.Stderr)
 	logger := log.NewLogfmtLogger(w)
 	exporter := NewExporter([]string{"/user.slice"}, logger, true)
-	metrics, err := exporter.collectv2()
+	metrics, err := exporter.getAllMetrics()
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err.Error())
 		return
@@ -138,19 +131,10 @@ func TestCollectv2SLURM(t *testing.T) {
 	collectProc = &varTrue
 	varLen := 100
 	collectProcMaxExec = &varLen
-	PidGroupPath = func(pid int) (string, error) {
-		if pid == 49276 {
-			return "/system.slice/slurmstepd.scope/job_4/step_0/user/task_0", nil
-		}
-		if pid == 43310 {
-			return "/system.slice/slurmstepd.scope/system", nil
-		}
-		return "", fmt.Errorf("Could not find cgroup path for %d", pid)
-	}
 	w := log.NewSyncWriter(os.Stderr)
 	logger := log.NewLogfmtLogger(w)
 	exporter := NewExporter([]string{"/slurm"}, logger, true)
-	metrics, err := exporter.collectv2()
+	metrics, err := exporter.getAllMetrics()
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err.Error())
 		return

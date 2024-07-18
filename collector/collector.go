@@ -16,12 +16,16 @@ package collector
 import (
 	"fmt"
 	"os"
-	"reflect"
+	"os/user"
+	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
 
 	"github.com/alecthomas/kingpin/v2"
+	"github.com/containerd/cgroups/v3/cgroup1"
+	"github.com/containerd/cgroups/v3/cgroup2"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
@@ -155,13 +159,7 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
-	var metrics []CgroupMetric
-	if e.cgroupv2 {
-		metrics, _ = e.collectv2()
-	} else {
-		metrics, _ = e.collectv1()
-	}
-
+	metrics, _ := e.getAllMetrics()
 	for _, m := range metrics {
 		if m.err {
 			ch <- prometheus.MustNewConstMetric(e.collectError, prometheus.GaugeValue, 1, m.name)
@@ -190,6 +188,55 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 				ch <- prometheus.MustNewConstMetric(e.processExec, prometheus.GaugeValue, count, m.name, exec)
 			}
 		}
+	}
+}
+
+func (e *Exporter) getInfo(cgroupName string, metric *CgroupMetric, logger log.Logger) {
+
+	userSlicePattern := regexp.MustCompile("^/user.slice/user-([0-9]+).slice$")
+	userSliceMatch := userSlicePattern.FindStringSubmatch(cgroupName)
+	if len(userSliceMatch) == 2 {
+		metric.userslice = true
+		metric.uid = userSliceMatch[1]
+		user, err := user.LookupId(metric.uid)
+		if err != nil {
+			level.Error(logger).Log("msg", "Error looking up user slice uid", "uid", metric.uid, "err", err)
+		} else {
+			metric.username = user.Username
+		}
+		return
+	}
+
+	slurmPattern := regexp.MustCompile("^/slurm/uid_([0-9]+)/job_([0-9]+)$")
+	slurmMatch := slurmPattern.FindStringSubmatch(cgroupName)
+	if len(slurmMatch) == 3 {
+		metric.job = true
+		metric.uid = slurmMatch[1]
+		metric.jobid = slurmMatch[2]
+		user, err := user.LookupId(metric.uid)
+		if err != nil {
+			level.Error(logger).Log("msg", "Error looking up slurm uid", "uid", metric.uid, "err", err)
+		} else {
+			metric.username = user.Username
+		}
+		return
+	}
+
+	torquePattern := regexp.MustCompile("^/torque/([0-9]+).*$")
+	torqueMatch := torquePattern.FindStringSubmatch(cgroupName)
+	if len(slurmMatch) == 2 {
+		metric.job = true
+		metric.jobid = torqueMatch[1]
+		return
+
+	}
+
+	if *collectProc {
+		pids, err := e.getProcesses(cgroupName)
+		if err != nil {
+			level.Error(e.logger).Log("msg", "Error loading cgroup processes", "cgroup", cgroupName, "err", err)
+		}
+		getProcInfo(pids, metric, e.logger)
 	}
 }
 
@@ -292,12 +339,105 @@ func fileExists(filename string) bool {
 	return !info.IsDir()
 }
 
-func sliceContains(s interface{}, v interface{}) bool {
-	slice := reflect.ValueOf(s)
-	for i := 0; i < slice.Len(); i++ {
-		if slice.Index(i).Interface() == v {
-			return true
+func (e *Exporter) getProcesses(cgroup string) ([]int, error) {
+
+	var pids []int
+
+	if e.cgroupv2 {
+		manager, err := cgroup2.Load(cgroup)
+		if err != nil {
+			return pids, err
 		}
+		procs, err := manager.Procs(true)
+		if err != nil {
+			return pids, err
+		}
+		pids = make([]int, len(procs))
+		for i, p := range procs {
+			pids[i] = int(p)
+		}
+		return pids, nil
+	} else {
+		manager, err := cgroup1.Load(cgroup1.StaticPath(cgroup))
+		if err != nil {
+			return pids, err
+		}
+		pidsCPU, err := manager.Processes(cgroup1.Cpu, true)
+		if err != nil {
+			return pids, err
+		}
+		pidsMem, err := manager.Processes(cgroup1.Cpu, true)
+		if err != nil {
+			return pids, err
+		}
+		procs := append(pidsCPU, pidsMem...)
+		pids = make([]int, len(procs))
+		for i, p := range procs {
+			pids[i] = int(p.Pid)
+		}
+		return pids, nil
 	}
-	return false
+}
+
+func (e *Exporter) getMetrics(cgroup string) (CgroupMetric, error) {
+	if e.cgroupv2 {
+		return e.getMetricsv2(cgroup)
+	} else {
+		return e.getMetricsv1(cgroup)
+	}
+}
+
+func (e *Exporter) getAllMetrics() ([]CgroupMetric, error) {
+	var names []string
+	var metrics []CgroupMetric
+	for _, cgroup := range e.paths {
+
+		processes, err := e.getProcesses(cgroup)
+		if err != nil {
+			level.Error(e.logger).Log("msg", "Error loading cgroup processes", "cgroup", cgroup, "err", err)
+			metric := CgroupMetric{name: cgroup, err: true}
+			metrics = append(metrics, metric)
+			continue
+		}
+		level.Debug(e.logger).Log("msg", "Found processes", "cgroup", cgroup, "processes", len(processes))
+
+		var glob string
+		switch cgroup {
+		case "/slurm":
+			glob = "/slurm/uid_*/job_*"
+		case "/user.slice":
+			glob = "/user.slice/*"
+		case "torque":
+			glob = "/torque/*"
+		default:
+			glob = cgroup + "/*"
+		}
+
+		fullPath := filepath.Join(*CgroupRoot + glob)
+		groupsPaths, err := filepath.Glob(fullPath)
+		if err != nil {
+			level.Error(e.logger).Log("msg", "Error loading cgroup children", "cgroup", cgroup, "err", err)
+		}
+		var children []string
+		for _, path := range groupsPaths {
+			split := strings.Split(path, *CgroupRoot)
+			if len(split) == 2 {
+				children = append(children, split[1])
+			}
+		}
+
+		wg := &sync.WaitGroup{}
+		wg.Add(len(names))
+		for _, name := range children {
+			go func(n string) {
+				defer wg.Done()
+				metric, _ := e.getMetrics(n)
+				metricLock.Lock()
+				metrics = append(metrics, metric)
+				metricLock.Unlock()
+			}(name)
+		}
+		wg.Wait()
+	}
+	return metrics, nil
 }

@@ -269,3 +269,4 @@ func (e *Exporter) collectv2() ([]CgroupMetric, error) {
 	}
 	return metrics, nil
 }
+
