@@ -35,10 +35,6 @@ var (
 	PidGroupPath = cgroup2.PidGroupPath
 )
 
-func NewCgroupV2Collector(paths []string, logger log.Logger) Collector {
-	return NewExporter(paths, logger, true)
-}
-
 func getInfov2(name string, pids []int, metric *CgroupMetric, logger log.Logger) {
 	pathBase := filepath.Base(name)
 	userSlicePattern := regexp.MustCompile("^user-([0-9]+).slice$")

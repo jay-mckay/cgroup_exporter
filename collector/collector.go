@@ -94,16 +94,6 @@ type CgroupMetric struct {
 	err             bool
 }
 
-func NewCgroupCollector(cgroupV2 bool, paths []string, logger log.Logger) Collector {
-	var collector Collector
-	if cgroupV2 {
-		collector = NewCgroupV2Collector(paths, logger)
-	} else {
-		collector = NewCgroupV1Collector(paths, logger)
-	}
-	return collector
-}
-
 func NewExporter(paths []string, logger log.Logger, cgroupv2 bool) *Exporter {
 	return &Exporter{
 		paths: paths,
