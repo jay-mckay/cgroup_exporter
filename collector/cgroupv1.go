@@ -26,10 +26,6 @@ import (
 	"github.com/go-kit/log/level"
 )
 
-func NewCgroupV1Collector(paths []string, logger log.Logger) Collector {
-	return NewExporter(paths, logger, false)
-}
-
 func subsystem() ([]cgroup1.Subsystem, error) {
 	s := []cgroup1.Subsystem{
 		cgroup1.NewCpuacct(*CgroupRoot),
