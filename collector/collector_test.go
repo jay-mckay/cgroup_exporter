@@ -89,9 +89,9 @@ func TestGetNFSInfo(t *testing.T) {
 	metric := CgroupMetric{}
 	w := log.NewSyncWriter(os.Stderr)
 	logger := log.NewLogfmtLogger(w)
-	getNFSInfo([]int{3876588}, &metric, logger)
+	getNFSInfo([]int{3876588, 3876589}, &metric, logger)
 
-	expected := 244255841.0
+	expected := 244255841.0 * 2
 	mount := "/home"
 	if actual, ok := metric.nfsRead["/home"]; ok {
 		if actual != expected {
@@ -101,9 +101,29 @@ func TestGetNFSInfo(t *testing.T) {
 		t.Errorf("No mountstats data found for mount %v", mount)
 	}
 
-	expected = 916798575.0
+	expected = 916798575.0 * 2
 	mount = "/home"
 	if actual, ok := metric.nfsWrite["/home"]; ok {
+		if actual != expected {
+			t.Errorf("Expected %v for mount %v, got %v", expected, mount, actual)
+		}
+	} else {
+		t.Errorf("No mountstats data found for mount %v", mount)
+	}
+
+	expected = 6216348004.0 * 2
+	mount = "/sys"
+	if actual, ok := metric.nfsRead[mount]; ok {
+		if actual != expected {
+			t.Errorf("Expected %v for mount %v, got %v", expected, mount, actual)
+		}
+	} else {
+		t.Errorf("No mountstats data found for mount %v", mount)
+	}
+
+	expected = 77555046.0 * 2
+	mount = "/sys"
+	if actual, ok := metric.nfsWrite[mount]; ok {
 		if actual != expected {
 			t.Errorf("Expected %v for mount %v, got %v", expected, mount, actual)
 		}

@@ -10819,7 +10819,7 @@ Directory: fixtures/proc/3876588
 Mode: 755
 # ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Path: fixtures/proc/3876588/mountstats
-Lines: 32
+Lines: 65
 device source.org:/home mounted on /home with fstype nfs statvers=1.1
 	opts:	rw,vers=3,rsize=1048576,wsize=1048576,namlen=255,acregmin=3,acregmax=60,acdirmin=30,acdirmax=60,hard,nolock,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=155.101.11.15,mountvers=3,mountport=20048,mountproto=udp,local_lock=all
 	age:	12859937
@@ -10852,3 +10852,108 @@ device source.org:/home mounted on /home with fstype nfs statvers=1.1
 	      FSINFO: 12 12 0 1152 1968 0 9 9 0
 	    PATHCONF: 1 1 0 96 140 0 0 0 0
 	      COMMIT: 0 0 0 0 0 0 0 0 0
+
+device source.org:/sys mounted on /sys with fstype nfs statvers=1.1
+	opts:	rw,vers=3,rsize=1048576,wsize=1048576,namlen=255,acregmin=3,acregmax=60,acdirmin=30,acdirmax=60,hard,nolock,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=155.101.11.15,mountvers=3,mountport=20048,mountproto=udp,local_lock=all
+	age:	12859937
+	caps:	caps=0xf,wtmult=4096,dtsize=131072,bsize=0,namlen=255
+	sec:	flavor=1,pseudoflavor=1
+	events:	9081452 605497478 9981 16805 2147959 9270 608051888 440491 56 10530 0 412343 2657184 27 1554849 5977 25891 836755 0 8 434581 0 0 0 0 0 0 
+	bytes:	6216348004 77555046 0 0 6216348004 77555046 60681 428757 
+	RPC iostats version: 1.1  p/v: 100003/3 (nfs)
+	xprt:	tcp 994 1 190 126 3 11776762 11776666 4 80541319 0 5 5026 13449
+	per-op statistics
+	        NULL: 1 1 0 44 24 0 0 0 0
+	     GETATTR: 9081452 9081519 241 907777512 1017122624 46917425 5443677 52453042 0
+	     SETATTR: 48 48 0 6436 6912 0 75 76 0
+	      LOOKUP: 10621 10621 0 1524528 1744172 57 5645 5822 5879
+	      ACCESS: 2242325 2242326 0 233492552 269072476 74368 775824 872739 1631
+	    READLINK: 227 227 0 28424 42316 1 93 96 0
+	        READ: 10542 10542 0 1189260 245607952 87 11789 12066 0
+	       WRITE: 414202 414230 9 967175432 66272320 2082051 5894104 7980312 0
+	      CREATE: 2068 2068 0 337764 529408 9 3743 3771 0
+	       MKDIR: 0 0 0 0 0 0 0 0 0
+	     SYMLINK: 0 0 0 0 0 0 0 0 0
+	       MKNOD: 0 0 0 0 0 0 0 0 0
+	      REMOVE: 2015 2015 0 265836 290160 8 3529 3555 0
+	       RMDIR: 0 0 0 0 0 0 0 0 0
+	      RENAME: 34 34 0 5276 8840 0 127 128 0
+	        LINK: 0 0 0 0 0 0 0 0 0
+	     READDIR: 83 83 0 10160 156564 0 47 49 0
+	 READDIRPLUS: 9697 9697 0 1207068 38652200 47 17020 17203 0
+	      FSSTAT: 3293 3293 0 329208 553224 13 3884 3926 0
+	      FSINFO: 12 12 0 1152 1968 0 9 9 0
+	    PATHCONF: 1 1 0 96 140 0 0 0 0
+	      COMMIT: 0 0 0 0 0 0 0 0 0
+Mode: 444
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Directory: fixtures/proc/3876589
+Mode: 755
+Path: fixtures/proc/3876589/mountstats
+Lines: 65
+device source.org:/home mounted on /home with fstype nfs statvers=1.1
+	opts:	rw,vers=3,rsize=1048576,wsize=1048576,namlen=255,acregmin=3,acregmax=60,acdirmin=30,acdirmax=60,hard,nolock,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=155.101.11.15,mountvers=3,mountport=20048,mountproto=udp,local_lock=all
+	age:	12859937
+	caps:	caps=0xf,wtmult=4096,dtsize=131072,bsize=0,namlen=255
+	sec:	flavor=1,pseudoflavor=1
+	events:	9081452 605497478 9981 16805 2147959 9270 608051888 440491 56 10530 0 412343 2657184 27 1554849 5977 25891 836755 0 8 434581 0 0 0 0 0 0 
+	bytes:	6216348004 77555046 0 0 244255841 916798575 60681 428757 
+	RPC iostats version: 1.1  p/v: 100003/3 (nfs)
+	xprt:	tcp 994 1 190 126 3 11776762 11776666 4 80541319 0 5 5026 13449
+	per-op statistics
+	        NULL: 1 1 0 44 24 0 0 0 0
+	     GETATTR: 9081452 9081519 241 907777512 1017122624 46917425 5443677 52453042 0
+	     SETATTR: 48 48 0 6436 6912 0 75 76 0
+	      LOOKUP: 10621 10621 0 1524528 1744172 57 5645 5822 5879
+	      ACCESS: 2242325 2242326 0 233492552 269072476 74368 775824 872739 1631
+	    READLINK: 227 227 0 28424 42316 1 93 96 0
+	        READ: 10542 10542 0 1189260 245607952 87 11789 12066 0
+	       WRITE: 414202 414230 9 967175432 66272320 2082051 5894104 7980312 0
+	      CREATE: 2068 2068 0 337764 529408 9 3743 3771 0
+	       MKDIR: 0 0 0 0 0 0 0 0 0
+	     SYMLINK: 0 0 0 0 0 0 0 0 0
+	       MKNOD: 0 0 0 0 0 0 0 0 0
+	      REMOVE: 2015 2015 0 265836 290160 8 3529 3555 0
+	       RMDIR: 0 0 0 0 0 0 0 0 0
+	      RENAME: 34 34 0 5276 8840 0 127 128 0
+	        LINK: 0 0 0 0 0 0 0 0 0
+	     READDIR: 83 83 0 10160 156564 0 47 49 0
+	 READDIRPLUS: 9697 9697 0 1207068 38652200 47 17020 17203 0
+	      FSSTAT: 3293 3293 0 329208 553224 13 3884 3926 0
+	      FSINFO: 12 12 0 1152 1968 0 9 9 0
+	    PATHCONF: 1 1 0 96 140 0 0 0 0
+	      COMMIT: 0 0 0 0 0 0 0 0 0
+
+device source.org:/sys mounted on /sys with fstype nfs statvers=1.1
+	opts:	rw,vers=3,rsize=1048576,wsize=1048576,namlen=255,acregmin=3,acregmax=60,acdirmin=30,acdirmax=60,hard,nolock,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=155.101.11.15,mountvers=3,mountport=20048,mountproto=udp,local_lock=all
+	age:	12859937
+	caps:	caps=0xf,wtmult=4096,dtsize=131072,bsize=0,namlen=255
+	sec:	flavor=1,pseudoflavor=1
+	events:	9081452 605497478 9981 16805 2147959 9270 608051888 440491 56 10530 0 412343 2657184 27 1554849 5977 25891 836755 0 8 434581 0 0 0 0 0 0 
+	bytes:	6216348004 77555046 0 0 6216348004 77555046 60681 428757 
+	RPC iostats version: 1.1  p/v: 100003/3 (nfs)
+	xprt:	tcp 994 1 190 126 3 11776762 11776666 4 80541319 0 5 5026 13449
+	per-op statistics
+	        NULL: 1 1 0 44 24 0 0 0 0
+	     GETATTR: 9081452 9081519 241 907777512 1017122624 46917425 5443677 52453042 0
+	     SETATTR: 48 48 0 6436 6912 0 75 76 0
+	      LOOKUP: 10621 10621 0 1524528 1744172 57 5645 5822 5879
+	      ACCESS: 2242325 2242326 0 233492552 269072476 74368 775824 872739 1631
+	    READLINK: 227 227 0 28424 42316 1 93 96 0
+	        READ: 10542 10542 0 1189260 245607952 87 11789 12066 0
+	       WRITE: 414202 414230 9 967175432 66272320 2082051 5894104 7980312 0
+	      CREATE: 2068 2068 0 337764 529408 9 3743 3771 0
+	       MKDIR: 0 0 0 0 0 0 0 0 0
+	     SYMLINK: 0 0 0 0 0 0 0 0 0
+	       MKNOD: 0 0 0 0 0 0 0 0 0
+	      REMOVE: 2015 2015 0 265836 290160 8 3529 3555 0
+	       RMDIR: 0 0 0 0 0 0 0 0 0
+	      RENAME: 34 34 0 5276 8840 0 127 128 0
+	        LINK: 0 0 0 0 0 0 0 0 0
+	     READDIR: 83 83 0 10160 156564 0 47 49 0
+	 READDIRPLUS: 9697 9697 0 1207068 38652200 47 17020 17203 0
+	      FSSTAT: 3293 3293 0 329208 553224 13 3884 3926 0
+	      FSINFO: 12 12 0 1152 1968 0 9 9 0
+	    PATHCONF: 1 1 0 96 140 0 0 0 0
+	      COMMIT: 0 0 0 0 0 0 0 0 0
+# ttar - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

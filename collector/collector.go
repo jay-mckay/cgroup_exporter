@@ -294,6 +294,7 @@ func getNFSInfo(pids []int, metric *CgroupMetric, logger log.Logger) {
 			for _, s := range stats {
 				if stats, is := s.Stats.(*procfs.MountStatsNFS); is {
 					metricLock.Lock()
+					// see https://utcc.utoronto.ca/~cks/space/blog/linux/NFSMountstatsBytesEvents
 					mountRead[s.Mount] += float64(stats.Bytes.ReadTotal)
 					mountWrite[s.Mount] += float64(stats.Bytes.WriteTotal)
 					metricLock.Unlock()
