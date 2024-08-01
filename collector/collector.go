@@ -30,7 +30,7 @@ import (
 
 var (
 	collectProc        = kingpin.Flag("collect.proc", "Boolean that sets if to collect proc information").Default("false").Bool()
-	collectNFS         = kingpin.Flag("collect.proc.nfs", "Whether to collect nfs statistics, i.e. read/write").Default("false").Bool()
+	collectNFS         = kingpin.Flag("collect.nfs", "Whether to collect nfs read/write statistics").Default("false").Bool()
 	CgroupRoot         = kingpin.Flag("path.cgroup.root", "Root path to cgroup fs").Default(defCgroupRoot).String()
 	collectProcMaxExec = kingpin.Flag("collect.proc.max-exec", "Max length of process executable to record").Default("100").Int()
 	ProcRoot           = kingpin.Flag("path.proc.root", "Root path to proc fs").Default(defProcRoot).String()
@@ -220,7 +220,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 				ch <- prometheus.MustNewConstMetric(e.nfsRead, prometheus.CounterValue, read, m.name, mount)
 			}
 			for mount, write := range m.nfsWrite {
-				ch <- prometheus.MustNewConstMetric(e.nfsRead, prometheus.CounterValue, write, m.name, mount)
+				ch <- prometheus.MustNewConstMetric(e.nfsWrite, prometheus.CounterValue, write, m.name, mount)
 
 			}
 		}
