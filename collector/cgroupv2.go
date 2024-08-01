@@ -189,9 +189,12 @@ func (e *Exporter) getMetricsv2(name string, pids []int, opts cgroup2.InitOpts) 
 	}
 	getInfov2(name, pids, &metric, e.logger)
 	if *collectProc {
-		level.Debug(e.logger).Log("msg", "Get process info", "pids", fmt.Sprintf("%v", pids))
 		getProcInfo(pids, &metric, e.logger)
 	}
+	if *collectNFS {
+		getNFSInfo(pids, &metric, e.logger)
+	}
+
 	return metric, nil
 }
 

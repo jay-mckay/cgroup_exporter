@@ -30,6 +30,7 @@ import (
 
 var (
 	collectProc        = kingpin.Flag("collect.proc", "Boolean that sets if to collect proc information").Default("false").Bool()
+	collectNFS         = kingpin.Flag("collect.proc.nfs", "Whether to collect nfs statistics, i.e. read/write").Default("false").Bool()
 	CgroupRoot         = kingpin.Flag("path.cgroup.root", "Root path to cgroup fs").Default(defCgroupRoot).String()
 	collectProcMaxExec = kingpin.Flag("collect.proc.max-exec", "Max length of process executable to record").Default("100").Int()
 	ProcRoot           = kingpin.Flag("path.proc.root", "Root path to proc fs").Default(defProcRoot).String()
@@ -66,6 +67,8 @@ type Exporter struct {
 	memswFailCount  *prometheus.Desc
 	info            *prometheus.Desc
 	processExec     *prometheus.Desc
+	nfsRead         *prometheus.Desc
+	nfsWrite        *prometheus.Desc
 	logger          log.Logger
 	cgroupv2        bool
 }
@@ -91,6 +94,8 @@ type CgroupMetric struct {
 	username        string
 	jobid           string
 	processExec     map[string]float64
+	nfsRead         map[string]float64
+	nfsWrite        map[string]float64
 	err             bool
 }
 
@@ -137,6 +142,10 @@ func NewExporter(paths []string, logger log.Logger, cgroupv2 bool) *Exporter {
 			"User slice information", []string{"cgroup", "username", "uid", "jobid"}, nil),
 		processExec: prometheus.NewDesc(prometheus.BuildFQName(Namespace, "", "process_exec_count"),
 			"Count of instances of a given process", []string{"cgroup", "exec"}, nil),
+		nfsRead: prometheus.NewDesc(prometheus.BuildFQName(Namespace, "nfs", "read_bytes"),
+			"NFS total bytes read", []string{"cgroup", "mount"}, nil),
+		nfsWrite: prometheus.NewDesc(prometheus.BuildFQName(Namespace, "nfs", "write_bytes"),
+			"NFS total bytes written", []string{"cgroup", "mount"}, nil),
 		collectError: prometheus.NewDesc(prometheus.BuildFQName(Namespace, "exporter", "collect_error"),
 			"Indicates collection error, 0=no error, 1=error", []string{"cgroup"}, nil),
 		logger:   logger,
@@ -161,6 +170,10 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- e.info
 	if *collectProc {
 		ch <- e.processExec
+	}
+	if *collectNFS {
+		ch <- e.nfsRead
+		ch <- e.nfsWrite
 	}
 }
 
@@ -195,9 +208,20 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		if m.userslice || m.job {
 			ch <- prometheus.MustNewConstMetric(e.info, prometheus.GaugeValue, 1, m.name, m.username, m.uid, m.jobid)
 		}
+
+		// optional metrics
 		if *collectProc {
 			for exec, count := range m.processExec {
 				ch <- prometheus.MustNewConstMetric(e.processExec, prometheus.GaugeValue, count, m.name, exec)
+			}
+		}
+		if *collectNFS {
+			for mount, read := range m.nfsRead {
+				ch <- prometheus.MustNewConstMetric(e.nfsRead, prometheus.CounterValue, read, m.name, mount)
+			}
+			for mount, write := range m.nfsWrite {
+				ch <- prometheus.MustNewConstMetric(e.nfsRead, prometheus.CounterValue, write, m.name, mount)
+
 			}
 		}
 	}
@@ -243,6 +267,45 @@ func getProcInfo(pids []int, metric *CgroupMetric, logger log.Logger) {
 	metric.processExec = executables
 }
 
+func getNFSInfo(pids []int, metric *CgroupMetric, logger log.Logger) {
+	mountRead := make(map[string]float64)
+	mountWrite := make(map[string]float64)
+	procFS, err := procfs.NewFS(*ProcRoot)
+	if err != nil {
+		level.Error(logger).Log("msg", "Unable to open procfs", "path", *ProcRoot)
+		return
+	}
+	wg := &sync.WaitGroup{}
+	wg.Add(len(pids))
+	for _, pid := range pids {
+		go func(p int) {
+			proc, err := procFS.Proc(p)
+			if err != nil {
+				level.Error(logger).Log("msg", "Unable to read PID", "pid", p)
+				wg.Done()
+				return
+			}
+			stats, err := proc.MountStats()
+			if err != nil {
+				level.Error(logger).Log("msg", "Unable to open read mount stats", "pid", p)
+				return
+			}
+			for _, s := range stats {
+				if stats, is := s.Stats.(procfs.MountStatsNFS); is {
+					metricLock.Lock()
+					mountRead[s.Mount] += float64(stats.Bytes.Read)
+					mountWrite[s.Mount] += float64(stats.Bytes.Read)
+					metricLock.Unlock()
+				}
+			}
+			wg.Done()
+		}(pid)
+	}
+	wg.Wait()
+	metric.nfsRead = mountRead
+	metric.nfsWrite = mountWrite
+
+}
 func parseCpuSet(cpuset string) ([]string, error) {
 	var cpus []string
 	var start, end int

@@ -146,16 +146,24 @@ func (e *Exporter) getMetricsv1(name string, pids map[string][]int) (CgroupMetri
 		metric.cpus = len(cpus)
 		metric.cpu_list = strings.Join(cpus, ",")
 	}
+
 	getInfov1(name, &metric, e.logger)
-	if *collectProc {
-		if val, ok := pids[name]; ok {
-			level.Debug(e.logger).Log("msg", "Get process info", "pids", fmt.Sprintf("%v", val))
+
+	if val, ok := pids[name]; ok {
+		level.Debug(e.logger).Log("msg", "Get process info", "pids", fmt.Sprintf("%v", val))
+		if *collectProc {
 			getProcInfo(val, &metric, e.logger)
-		} else {
+		}
+		if *collectNFS {
+			getNFSInfo(val, &metric, e.logger)
+		}
+	} else {
+		if *collectProc || *collectNFS {
 			level.Error(e.logger).Log("msg", "Unable to get PIDs", "path", name)
 			metric.err = true
 		}
 	}
+
 	return metric, nil
 }
 
