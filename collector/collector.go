@@ -288,13 +288,14 @@ func getNFSInfo(pids []int, metric *CgroupMetric, logger log.Logger) {
 			stats, err := proc.MountStats()
 			if err != nil {
 				level.Error(logger).Log("msg", "Unable to open read mount stats", "pid", p)
+				wg.Done()
 				return
 			}
 			for _, s := range stats {
-				if stats, is := s.Stats.(procfs.MountStatsNFS); is {
+				if stats, is := s.Stats.(*procfs.MountStatsNFS); is {
 					metricLock.Lock()
-					mountRead[s.Mount] += float64(stats.Bytes.Read)
-					mountWrite[s.Mount] += float64(stats.Bytes.Read)
+					mountRead[s.Mount] += float64(stats.Bytes.ReadTotal)
+					mountWrite[s.Mount] += float64(stats.Bytes.WriteTotal)
 					metricLock.Unlock()
 				}
 			}

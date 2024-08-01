@@ -84,3 +84,31 @@ func TestGetProcInfo(t *testing.T) {
 		}
 	}
 }
+
+func TestGetNFSInfo(t *testing.T) {
+	metric := CgroupMetric{}
+	w := log.NewSyncWriter(os.Stderr)
+	logger := log.NewLogfmtLogger(w)
+	getNFSInfo([]int{3876588}, &metric, logger)
+
+	expected := 244255841.0
+	mount := "/home"
+	if actual, ok := metric.nfsRead["/home"]; ok {
+		if actual != expected {
+			t.Errorf("Expected %v for mount %v, got %v", expected, mount, actual)
+		}
+	} else {
+		t.Errorf("No mountstats data found for mount %v", mount)
+	}
+
+	expected = 916798575.0
+	mount = "/home"
+	if actual, ok := metric.nfsWrite["/home"]; ok {
+		if actual != expected {
+			t.Errorf("Expected %v for mount %v, got %v", expected, mount, actual)
+		}
+	} else {
+		t.Errorf("No mountstats data found for mount %v", mount)
+	}
+
+}
