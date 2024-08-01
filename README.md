@@ -53,6 +53,14 @@ If you wish to collect process information for a cgroup pass the `--collect.proc
 setcap cap_sys_ptrace=eip /usr/bin/cgroup_exporter
 ```
 
+## NFS metrics
+
+If you wish to collect NFS information for a cgroup pass the `--collect.nfs` flag. If this exporter is not running as root then it's required to set capabilities to ensure the user running this exporter can read everything under procfs:
+
+```
+setcap cap_sys_ptrace=eip /usr/bin/cgroup_exporter
+```
+
 ## Metrics
 
 Example of metrics exposed by this exporter when looking at `/user.slice` paths:
